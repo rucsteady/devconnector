@@ -77,10 +77,68 @@ router.post('/', [
         if (linkedin) profileFields.social.linkedin = linkedin;
         if (instagram) profileFields.social.instagram = instagram;
 
-        console.log(profileFields.social.twitter);
+        try {
+            let profile = await Profile.findOne({ user: req.user.id });
 
-        res.send('Hello');
-    })
+            if (profile) {
+                // Update
+                profile = await Profile.findOneAndUpdate(
+                    { user: req.user.id },
+                    { $set: profileFields },
+                    { new: true }
+                );
+                return res.json(profile);
+            }
+
+            // Create
+            profile = new Profile(profileFields);
+            await profile.save();
+            res.json(profile);
+
+        } catch (error) {
+            res.status(500).send('Server Error');
+
+        }
+    });
+
+// @route   GET api/profile/me
+// @desc    Get all profiles
+// @acces   Public
+router.get('/', async (req, res) => {
+    try {
+        const profiles = await Profile.find().populate('user', ['name', 'avatar']);
+        res.json(profiles);
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).send('Server Error');
+
+    }
+});
+
+// @route   GET api/profile/user/:user_id
+// @desc    Get profile by User ID
+// @acces   Public
+router.get('/user/:user_id', async (req, res) => {
+    try {
+        const profile = await Profile.findOne({ user: req.params.user_id }).populate('user',
+            ['name', 'avatar']);
+
+        if (!profile) {
+            return res.status(400).json({ msg: 'Profile not found' });
+        }
+
+        res.json(profile);
+
+    } catch (error) {
+        console.error(error.message);
+        if (error.kind == 'ObjectId') {
+            return res.status(400).json({ msg: 'Profile not found' });
+        }
+        res.status(500).send('Server Error');
+
+    }
+})
 
 
 module.exports = router;
